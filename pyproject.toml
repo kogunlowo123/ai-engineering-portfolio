@@ -1,6 +1,6 @@
 [project]
 name = "portfolio"
-version = "0.1.0"
+version = "0.1.1"
 description = "A generated index of eight AI engineering repositories, and a verifier that checks its own claims still hold."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
