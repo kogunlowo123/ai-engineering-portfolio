@@ -147,9 +147,13 @@ class TestTheGateFires:
         page = render(portfolio) + "\n[up](#top) [out](https://example.invalid/x)\n"
         checks = check_offline(portfolio, page, page, Path("/nonexistent-root"))
         claims = [check.claim for check in checks if "the link to" in check.claim]
-        assert not [claim for claim in claims if "#top" in claim or "example" in claim]
-        # Every project URL on the page is https too, and none became a path.
-        assert not [claim for claim in claims if "github.com" in claim]
+        # Exactly the two links the banner carries into `docs/`, and nothing
+        # else: not the fragment, not the absolute URL, and not any of the eight
+        # project URLs, every one of which is https.
+        assert claims == [
+            "the link to docs/order.md resolves",
+            "the link to docs/verification.md resolves",
+        ]
 
     def test_enforce_lists_every_failure_not_only_the_first(self, portfolio):
         checks = [
