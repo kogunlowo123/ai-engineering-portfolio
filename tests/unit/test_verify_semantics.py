@@ -207,6 +207,22 @@ class TestUnreachableIsNotAFailedClaim:
             check_live(_project())
         assert caught.value.exit_code == EXIT_COULD_NOT_RUN
 
+    def test_a_non_https_documentation_url_is_refused_before_it_is_opened(self, monkeypatch):
+        # The negative control for the B310 fix. The documentation URL is built
+        # from data in `projects.toml`, and `urlopen` will open `file://`, so a
+        # crafted data file could otherwise have turned a liveness check into a
+        # local-file read. Nothing must reach `urlopen` at all.
+        from portfolio.errors import ConfigError
+        from portfolio.verify import _status
+
+        def opened(*_a: Any, **_k: Any) -> None:
+            msg = "urlopen was reached with a non-https URL"
+            raise AssertionError(msg)
+
+        monkeypatch.setattr("urllib.request.urlopen", opened)
+        with pytest.raises(ConfigError, match="non-https"):
+            _status("file:///etc/passwd")
+
     def test_an_http_error_is_an_answer_not_an_outage(self, monkeypatch):
         # A 404 from a documentation site is exactly the decay this command
         # exists to catch, so it must become a *failed claim* rather than an

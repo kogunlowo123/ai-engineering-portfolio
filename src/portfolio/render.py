@@ -147,6 +147,10 @@ def render(portfolio: Portfolio) -> str:
             " gate that fails on someone else's rate limit is a gate people learn"
             " to ignore.",
             "",
+            "[docs/verification.md](docs/verification.md) is the full account:"
+            " what is checked, why the live check is scheduled rather than"
+            " required, and why an unreachable API exits 3 rather than 2.",
+            "",
             "## License",
             "",
             "MIT. Each project is separately licensed in its own repository.",

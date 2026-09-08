@@ -24,6 +24,7 @@ signal.
 from __future__ import annotations
 
 import json
+import re
 import subprocess  # nosec B404 - see `_gh`; a literal argv and no shell
 import urllib.error
 import urllib.request
@@ -33,6 +34,8 @@ from typing import TYPE_CHECKING, Final
 from portfolio.errors import ConfigError, GateError, UnreachableError
 
 if TYPE_CHECKING:  # pragma: no cover - annotations only
+    from pathlib import Path
+
     from portfolio.model import Portfolio, Project
 
 #: How long to wait for one HTTP request. Short: this checks liveness, not
@@ -41,6 +44,10 @@ TIMEOUT_S: Final[float] = 20.0
 
 #: What a healthy documentation site returns.
 OK_STATUS: Final[int] = 200
+
+#: Every Markdown link that is not absolute and not a bare fragment. All of them
+#: point at a file in this repository, and all of them have to exist.
+_RELATIVE_LINK: Final[re.Pattern[str]] = re.compile(r"\]\((?!https?:|mailto:|#)([^)#\s]+)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,9 +130,18 @@ def _status(url: str) -> int:
         ) from error
 
 
-def check_offline(portfolio: Portfolio, readme: str, rendered: str) -> list[Check]:
-    """The README matches the data. No network."""
-    return [
+def check_offline(
+    portfolio: Portfolio, readme: str, rendered: str, root: Path | None = None
+) -> list[Check]:
+    """The README matches the data, and every link in it resolves. No network.
+
+    The link check exists because of a hole this repository shipped for exactly
+    one commit: the front page linked ``docs/order.md`` and nothing verified the
+    file was there. Renaming or moving it would have 404ed the published page
+    silently -- which is the definition of a claim nobody's checker knows about,
+    and the thing this whole repository is against.
+    """
+    checks = [
         Check(
             project="(index)",
             claim="README.md matches projects.toml",
@@ -142,6 +158,17 @@ def check_offline(portfolio: Portfolio, readme: str, rendered: str) -> list[Chec
             for project in portfolio.projects
         ],
     ]
+    if root is not None:
+        checks.extend(
+            Check(
+                project="(index)",
+                claim=f"the link to {target} resolves",
+                ok=(root / target).exists(),
+                detail="" if (root / target).exists() else "no such file",
+            )
+            for target in sorted(set(_RELATIVE_LINK.findall(rendered)))
+        )
+    return checks
 
 
 def check_live(project: Project) -> list[Check]:

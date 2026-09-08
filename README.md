@@ -228,6 +228,8 @@ portfolio verify --live    # every repo is public, released, green, and its docs
 
 An index is a page full of claims that decay: a repository goes private, a release is deleted, a documentation site starts 404ing, a pipeline goes red. Nothing re-reads a hand-written list, so this one re-reads itself — weekly, and on demand. The offline check runs on every push; the live one is not on the required path, because a gate that fails on someone else's rate limit is a gate people learn to ignore.
 
+[docs/verification.md](docs/verification.md) is the full account: what is checked, why the live check is scheduled rather than required, and why an unreachable API exits 3 rather than 2.
+
 ## License
 
 MIT. Each project is separately licensed in its own repository.

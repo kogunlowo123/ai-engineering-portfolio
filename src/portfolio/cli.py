@@ -135,7 +135,7 @@ def _cmd_render(args: argparse.Namespace) -> int:
     rendered = render(portfolio)
     if args.check:
         current = args.readme.read_text(encoding="utf-8") if args.readme.exists() else ""
-        checks = check_offline(portfolio, current, rendered)
+        checks = check_offline(portfolio, current, rendered, args.data.parent)
         for check in checks:
             print(check)
         enforce(checks)
@@ -152,7 +152,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     current = args.readme.read_text(encoding="utf-8") if args.readme.exists() else ""
 
     print("offline: the index matches its own data")
-    checks: list[Check] = check_offline(portfolio, current, rendered)
+    checks: list[Check] = check_offline(portfolio, current, rendered, args.data.parent)
     for check in checks:
         print(check)
 

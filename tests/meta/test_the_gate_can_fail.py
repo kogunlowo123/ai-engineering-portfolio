@@ -11,6 +11,7 @@ about a broken fixture.
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -83,6 +84,19 @@ class TestTheGatePasses:
         checks = check_offline(real, README.read_text(encoding="utf-8"), render(real))
         assert all(check.ok for check in checks), [c for c in checks if not c.ok]
 
+    def test_every_link_on_the_shipped_index_resolves(self):
+        # The front page links into docs/. Nothing verified those files existed
+        # until this check, which made them exactly the kind of claim this
+        # repository is against: true when written, silently a 404 afterwards.
+        from portfolio.cli import DATA, README
+
+        real = load(DATA)
+        rendered = render(real)
+        checks = check_offline(real, README.read_text(encoding="utf-8"), rendered, DATA.parent)
+        links = [check for check in checks if "the link to" in check.claim]
+        assert links, "the index should link to at least one file in the repository"
+        assert all(check.ok for check in links), [c for c in links if not c.ok]
+
 
 class TestTheGateFires:
     def test_a_hand_edited_readme_fails(self, portfolio):
@@ -106,6 +120,36 @@ class TestTheGateFires:
         assert any(not check.ok and check.project == "beta" for check in checks)
         with pytest.raises(GateError):
             enforce(checks)
+
+    def test_a_link_to_a_file_that_is_not_there_fails(self, tmp_path, portfolio):
+        # The control: a link whose target exists passes. The banner links into
+        # docs/ itself, so those files have to be present for the control to be
+        # about the one link this test adds.
+        (tmp_path / "docs").mkdir()
+        for name in ("order.md", "verification.md", "there.md"):
+            (tmp_path / "docs" / name).write_text("present", encoding="utf-8")
+        present = render(portfolio) + "\nSee [docs/there.md](docs/there.md).\n"
+        enforce(check_offline(portfolio, present, present, tmp_path))
+
+        # The same page pointing one file to the left. A rename or a typo in a
+        # relative link publishes a 404 and changes nothing a reader can see
+        # from the source, so the checker has to be the one that notices.
+        absent = render(portfolio) + "\nSee [docs/gone.md](docs/gone.md).\n"
+        checks = check_offline(portfolio, absent, absent, tmp_path)
+        assert any(not check.ok and "docs/gone.md" in check.claim for check in checks), checks
+        with pytest.raises(GateError, match=re.escape("docs/gone.md")):
+            enforce(checks)
+
+    def test_absolute_and_fragment_links_are_not_treated_as_files(self, portfolio):
+        # Every project URL on the page is an https link, and headings link by
+        # fragment. Treating either as a path would fail every run and the
+        # check would be turned off within a week.
+        page = render(portfolio) + "\n[up](#top) [out](https://example.invalid/x)\n"
+        checks = check_offline(portfolio, page, page, Path("/nonexistent-root"))
+        claims = [check.claim for check in checks if "the link to" in check.claim]
+        assert not [claim for claim in claims if "#top" in claim or "example" in claim]
+        # Every project URL on the page is https too, and none became a path.
+        assert not [claim for claim in claims if "github.com" in claim]
 
     def test_enforce_lists_every_failure_not_only_the_first(self, portfolio):
         checks = [

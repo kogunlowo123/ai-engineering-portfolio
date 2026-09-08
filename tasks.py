@@ -60,7 +60,7 @@ TASKS: dict[str, Task] = {
     ),
     "test": (
         "Run the whole test suite with the coverage gate.",
-        [_uv_run("pytest", "--cov", "--cov-report=term-missing", "--cov-fail-under=80")],
+        [_uv_run("pytest", "--cov", "--cov-report=term-missing", "--cov-fail-under=100")],
     ),
     "test-unit": ("Run unit tests only.", [_uv_run("pytest", "-m", "unit")]),
     "test-integration": (

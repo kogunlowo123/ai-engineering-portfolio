@@ -18,9 +18,17 @@ portfolio verify          # or: portfolio render --check
 This check regenerates the file and compares. It needs no network, is
 deterministic, and runs **on every push**.
 
-The failure it catches is somebody editing the generated file. That edit would
-be a claim no checker knows about, which is the whole thing this repository
-argues against.
+It catches two failures. The first is somebody editing the generated file:
+that edit is a claim no checker knows about, which is the whole thing this
+repository argues against.
+
+The second is a **relative link that no longer resolves**. The front page links
+into `docs/`, and this repository shipped those links for exactly one commit
+with nothing verifying the files were there — rename or move one and the
+published page 404s silently, with nothing in the source looking any different.
+So every Markdown link on the rendered page that is not `https:`, `mailto:` or
+a bare `#fragment` is resolved against the repository root, and a miss is a
+failed claim like any other.
 
 ### Live: the claims still hold in the world
 
@@ -38,7 +46,7 @@ For each of the eight projects:
 | the latest run on `main` succeeded | `gh run list --json conclusion` |
 | the documentation site answers 200 | one HTTP GET |
 
-Forty claims across eight repositories, plus the nine offline ones.
+Forty claims across eight repositories, plus eleven offline ones.
 
 ## Why the live check is not on the required path
 

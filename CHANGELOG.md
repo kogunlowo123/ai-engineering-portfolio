@@ -20,14 +20,18 @@ claims.
 * **A generated `README.md`.** `portfolio render` writes it; `portfolio render
   --check` fails if the file on disk has drifted. A hand-edit to a generated
   page is a claim no checker knows about.
+* **Every relative link on the rendered page is resolved against the
+  repository.** The front page links into `docs/`, and a rename would have
+  published a silent 404 with nothing in the source looking different. Links
+  that are `https:`, `mailto:` or a bare `#fragment` are left alone.
 * **`portfolio verify --live`** — for each project: the repository is public and
   not archived, the release named in the data exists, the latest run on `main`
   succeeded, and the documentation site answers 200. Forty live claims across
-  eight repositories, plus nine offline ones.
+  eight repositories, plus eleven offline ones.
 * **Four exit codes**, with the distinction between the last two as the point:
   0 the claims hold, 1 usage, 2 a claim is no longer true, 3 nothing could be
   checked. An unreachable API exits 3, never 2.
-* **71 tests at 100% coverage** across five layers, including a `meta` layer
+* **75 tests at 100% coverage** across five layers, including a `meta` layer
   whose only job is to break one claim at a time and assert the check goes red,
   and a `live` layer deselected by default.
 * A weekly `live.yml` workflow, deliberately off the pull-request path.

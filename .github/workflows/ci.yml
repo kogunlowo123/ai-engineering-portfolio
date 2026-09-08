@@ -118,7 +118,7 @@ jobs:
       - run: uv sync --locked --group dev
 
       - name: Full suite with the coverage gate
-        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=98
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=100
 
   build:
     name: Distribution

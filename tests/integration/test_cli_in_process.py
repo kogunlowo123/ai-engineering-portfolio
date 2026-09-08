@@ -104,7 +104,7 @@ class TestTheLiveBranch:
         assert main(["verify", "--live"]) == EXIT_OK
         printed = capsys.readouterr().out
         assert "the claims still hold in the world" in printed
-        assert "all 17 claims hold" in printed
+        assert "all 19 claims hold" in printed
 
     def test_a_failed_live_claim_exits_two(self, monkeypatch, capsys):
         from portfolio import cli
