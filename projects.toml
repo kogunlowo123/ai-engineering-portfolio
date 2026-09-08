@@ -1,0 +1,190 @@
+# The portfolio, as data.
+#
+# This file is the single source of truth. README.md is generated from it by
+# `portfolio render`, and every claim in it that can decay is checked against
+# the live world by `portfolio verify --live`.
+#
+# Measured figures are dated to the release tag. "465 tests at v0.1.0" stays
+# true forever; "465 tests" becomes false the first time a dependency bump
+# lands. The verifier therefore never has to chase them.
+
+[owner]
+handle = "kogunlowo123"
+name = "Kayode Ogunlowo"
+
+# ---------------------------------------------------------------------------
+
+[[project]]
+slug = "rag-research-assistant"
+title = "RAG research assistant"
+order = 1
+tagline = "Retrieval with verified citations, measured grounding, and a refusal threshold."
+release = "v0.1.0"
+tests = "465"
+coverage = "90%"
+stack = ["FastAPI", "SQLAlchemy 2 (async)", "NumPy", "PostgreSQL", "Docker"]
+capabilities = [
+  "Hybrid retrieval: dense vectors and BM25 over a persisted inverted index, fused with RRF, diversified with MMR",
+  "Trust-level prompt construction with nonce fences around retrieved text",
+  "Citation verification and per-sentence grounding, with a refusal threshold rather than a confident guess",
+  "Layered prompt-injection defence on retrieved documents",
+  "Per-tenant isolation enforced in SQL, not in application code",
+  "Pluggable embedding providers (fastembed, Ollama, OpenAI-compatible, hashing) with an extractive fallback",
+]
+finding = """
+Grounding is measured per sentence and the service **refuses** below a
+threshold. A RAG system that always answers is a RAG system whose citations
+nobody has checked."""
+
+[[project]]
+slug = "ai-support-agent"
+title = "Bounded support agent"
+order = 2
+tagline = "An agent that escalates rather than asserting a fact no tool returned."
+release = "v0.1.0"
+tests = "502"
+coverage = "88%"
+stack = ["FastAPI", "Pydantic", "Docker"]
+capabilities = [
+  "Explicit state machine with a checked transition table",
+  "Step and wall-clock budgets enforced as hard ceilings, not advice",
+  "Permissioned tool registry with circuit breakers and idempotency keys",
+  "Deterministic intent classification and planning; policy computed in code",
+  "A verifier that escalates rather than sending any sentence asserting a fact no tool returned",
+  "31-scenario gate including adversarial and identity categories",
+]
+finding = """
+The verifier is the product. Fifteen real defects surfaced while writing its
+tests, including an unreachable `ESCALATED` transition that crashed the agent
+**at the moment it decided to be careful**, and an advisory step budget that
+appended past its own maximum."""
+
+[[project]]
+slug = "mcp-developer-server"
+title = "Sandboxed MCP server"
+order = 3
+tagline = "Read-only developer tools in a contained workspace, with results marked untrusted."
+release = "v0.1.0"
+tests = "527 on Linux, 520 on Windows (7 symlink cases skipped)"
+coverage = "91%"
+stack = ["Model Context Protocol (revision 2026-07-28)", "asyncio", "Docker"]
+capabilities = [
+  "Read-only source-code tools inside a contained workspace",
+  "Path containment that survives symlinks, junctions and traversal",
+  "Secret redaction on every result before it leaves the sandbox",
+  "Tool output marked untrusted, so a model cannot mistake it for instruction",
+  "Implements MCP revision 2026-07-28",
+]
+finding = """
+Everything the server returns is labelled **untrusted**. A file in a repository
+is attacker-controlled input the moment the repository has contributors, and an
+MCP server that hands it to a model unmarked is an injection channel with a
+protocol around it."""
+
+[[project]]
+slug = "ai-evals-regression-suite"
+title = "Evaluations that fail builds"
+order = 4
+tagline = "An eval harness with a baseline, real exit codes, and a gate on the gate."
+release = "v0.1.0"
+tests = "618"
+coverage = "96%"
+stack = ["Python", "Docker"]
+capabilities = [
+  "Committed baseline with per-case and aggregate rules selected by run mode",
+  "Exit 2 for 'a gate failed' and 3 for 'the harness could not run'",
+  "Eleven deterministic mutators, each declaring what it applies to",
+  "Grading as a pure function of the response, so the meta-gate costs no extra model calls",
+]
+finding = """
+The **meta-gate**: `aievals mutate` corrupts a response the suite *accepted* and
+asserts the verdict flips. It found a real hole in this repository's own example
+suite during development. A suite that has only ever been observed passing is
+indistinguishable from `exit 0`."""
+
+[[project]]
+slug = "llmops-observability"
+title = "LLM observability you can gate on"
+order = 5
+tagline = "Cost against a versioned price book, and burn-rate budgets that exit non-zero."
+release = "v0.1.0"
+tests = "461"
+coverage = "94.76%"
+stack = ["OpenTelemetry", "Prometheus", "Docker"]
+capabilities = [
+  "Cost accounting against a versioned price book, so a price change is a diff",
+  "Multi-window burn-rate error budgets",
+  "A command that exits non-zero when an objective is missed",
+  "Telemetry designed to be gated on rather than looked at",
+]
+finding = """
+Dashboards are not a control. This ships a **command that fails a pipeline**
+when an objective is missed, which is the difference between observability and
+a wall of graphs nobody is paged by."""
+
+[[project]]
+slug = "domain-slm"
+title = "A small domain model you can trust"
+order = 6
+tagline = "A tokenizer and classifier from scratch, and an evaluation that refuses to guess."
+release = "v0.1.0"
+tests = "345"
+coverage = "95.79%"
+stack = ["NumPy", "Docker"]
+capabilities = [
+  "BPE tokenizer and classifier trained from scratch on CPU in seconds",
+  "Contamination detection calibrated against a null corpus",
+  "Refuses to report a metric when the split it was measured on overlaps training",
+  "Digest gates for integer artefacts, tolerance gates for float ones",
+]
+finding = """
+The published contamination rule (13-gram containment >= 0.5) was inherited,
+measured, and **found not to transfer**: data disjoint by construction scored
+1.80% while the genuine test split scored 1.25%, so a threshold on it decides on
+noise. Calibrating against a null corpus fixes it. Also published: naive Bayes
+matches the neural model at p = 0.79 with a fifth of the parameters."""
+
+[[project]]
+slug = "prompt-injection-firewall"
+title = "A firewall that publishes its own bypass rate"
+order = 7
+tagline = "Hold out an attack technique and the countermeasures it motivated, then report what gets through."
+release = "v0.1.0"
+tests = "262"
+coverage = "91.87%"
+stack = ["Python", "Docker"]
+capabilities = [
+  "Leave-one-family-out evaluation: hold out a technique *and* the rules it motivated",
+  "Three detection layers, with the ensemble measured rather than assumed",
+  "Wilson intervals on every published rate",
+  "False-positive budget enforced at a matched realised rate, not just a matched target",
+]
+finding = """
+**The ensemble was worse than one of its own inputs.** A noisy-OR of three
+layers measured 20.89% bypass; the model layer alone measured 2.08%. The weak
+layers fire on benign traffic, which pushes the 1%-FPR threshold from 0.11 to
+0.79. The repository ships the configuration the measurement selected, and
+publishes the cost (realised FPR 1.25% to 1.84%) in the same paragraph."""
+
+[[project]]
+slug = "ai-model-gateway"
+title = "A gateway that measures its own routing"
+order = 8
+tagline = "A fitted router against a spend-matched null, and a breaker that sometimes makes things worse."
+release = "v0.1.0"
+tests = "241"
+coverage = "92.95%"
+stack = ["FastAPI", "Discrete-event simulation", "Docker", "Ollama (optional)"]
+capabilities = [
+  "Routes between model tiers by predicted difficulty, fitted by IRLS",
+  "Every headline measured against a spend-matched null that could have won",
+  "Discrete-event simulation on integer virtual time, so concurrency results replay exactly",
+  "Retry, circuit breakers and an end-to-end deadline that covers queueing",
+  "OpenAI-compatible HTTP surface with a provenance block on every completion",
+]
+finding = """
+Three: the router's **quality** generalises (+0.46 optimism gap) while its
+**budget** does not (1.87x to 5.10x on the same thresholds); a self-validating
+cascade answers 99.96% and is correct 77.38%; and a circuit breaker serves 21%
+of traffic on a small pool and 99.6% on a large one, because **failover needs
+capacity**."""

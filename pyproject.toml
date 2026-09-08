@@ -1,0 +1,164 @@
+[project]
+name = "portfolio"
+version = "0.1.0"
+description = "A generated index of eight AI engineering repositories, and a verifier that checks its own claims still hold."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "kogunlowo123" }]
+keywords = ["portfolio", "index", "verification"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
+]
+
+# No runtime dependencies at all, and that is a decision rather than an
+# accident. This program reads a TOML file (`tomllib` is in the standard
+# library from 3.11), writes Markdown, shells out to `gh`, and makes one HTTP
+# request per project. A template engine or an HTTP client would each be a
+# larger surface than the code that would use them.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/kogunlowo123/ai-engineering-portfolio"
+Source = "https://github.com/kogunlowo123/ai-engineering-portfolio"
+Issues = "https://github.com/kogunlowo123/ai-engineering-portfolio/issues"
+
+[project.scripts]
+portfolio = "portfolio.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/portfolio"]
+
+[dependency-groups]
+dev = [
+  "pytest>=9.1,<10",
+  "pytest-cov>=7.0,<8",
+  "pytest-randomly>=5.0,<6",
+  "ruff>=0.16.6,<0.17",
+  "mypy>=2.3.1,<3",
+  "bandit[toml]>=1.9.4,<2",
+  "pip-audit>=2.9,<3",
+]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+testpaths = ["tests"]
+# `-m "not live"` by default: the live checks need the network and an
+# authenticated `gh`, and a suite that fails on a rate limit is a suite
+# people learn to ignore. CI runs them on a schedule instead.
+addopts = ["--strict-markers", "--strict-config", "-ra", "-m", "not live"]
+markers = [
+  "unit: pure logic, no network",
+  "integration: the CLI driven in process against real temporary files",
+  "e2e: the CLI as a real process",
+  "meta: the gate's own negative controls",
+  "live: needs the network and an authenticated `gh`; skipped everywhere else",
+]
+# An unraised warning is a defect nobody has noticed yet.
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["src/portfolio"]
+branch = true
+# `python -m portfolio` is a two-line shim whose only job is to be run as a
+# subprocess, which is a different interpreter and therefore invisible to
+# coverage. tests/e2e does exercise it; counting it here would mean either a
+# permanent 2-line hole or a test that imports it for the number's sake.
+omit = ["src/portfolio/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "COM812",   # conflicts with the formatter
+  "D203",     # incompatible with D211
+  "D213",     # incompatible with D212
+  "ISC001",   # conflicts with the formatter
+  "TD002", "TD003", "FIX002",  # no TODOs are permitted anyway
+  "EM101", "EM102", "TRY003",  # messages are written where they are raised
+  "PLR0913",  # argument counts are judged in review
+  # This is an MIT-licensed repository with a LICENSE file. A copyright header
+  # repeated at the top of every module is noise that nobody keeps accurate.
+  "CPY001",
+  # The renderer builds Markdown by concatenating adjacent string literals
+  # across lines, which is what makes the output readable in the source. That
+  # is the pattern ISC004 exists to discourage in expressions; here it is the
+  # document.
+  "ISC003", "ISC004",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "D", "PLR2004", "S101", "SLF001", "ARG001", "ARG002",
+  "PLC0415", "RUF012", "S603", "S607",
+  # A fixture's `tmp_path: Path` annotation is there to satisfy mypy --strict,
+  # which does check tests here. Hiding the import in a type-checking block to
+  # satisfy TC003 would trade one checker's rule for another's readability.
+  "TC003",
+  # Test doubles stand in for `subprocess.run` and `urllib.request.urlopen`,
+  # whose signatures are wide by design. Enumerating them here would pin the
+  # test to a stdlib signature it does not care about; the double only has to
+  # accept whatever the code under test passes.
+  "ANN401", "ANN002", "ANN003", "PYI034",
+  # Test functions are annotated where the annotation says something. Requiring
+  # `-> None` on 55 test methods adds no information and hides the ones where a
+  # type genuinely matters -- and the fixtures here are pytest's, whose types
+  # are an implementation detail of the plugin.
+  "ANN001", "ANN201", "ANN202",
+  # The test directories are deliberately not packages.
+  "INP001",
+]
+# The task runner is a standard-library shell wrapper. TC003 would have it
+# hide `Sequence` in a type-checking block, which for a file whose whole job
+# is a typed table of command lists makes the table harder to read for no
+# runtime benefit.
+"tasks.py" = ["D", "T201", "S603", "S607", "TC003"]
+"tasks_local.py" = ["D", "T201", "S603", "S607", "TC003"]
+"src/portfolio/cli.py" = ["T201"]
+"src/portfolio/verify.py" = ["T201"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_unused_configs = true
+# Without these, `mypy` with no arguments checks only what it can resolve as a
+# package and silently skips tests/ -- a lesson from an earlier project in this
+# series, where 243 real errors hid behind a config section that never matched.
+namespace_packages = true
+explicit_package_bases = true
+mypy_path = "src,."
+files = ["src", "tests", "tasks.py", "tasks_local.py"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false

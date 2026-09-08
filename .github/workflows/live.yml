@@ -1,0 +1,57 @@
+name: Live claims
+
+# The check that makes this an index rather than a list.
+#
+# Deliberately NOT on the pull-request path. A network check on every PR fails
+# on rate limits, on GitHub incidents, on a runner with no egress -- none of
+# which mean a claim is false. A gate that goes red for reasons nobody can act
+# on is a gate people learn to re-run until it passes, which is worse than not
+# having one.
+#
+# So: weekly, and on demand.
+
+on:
+  schedule:
+    # Monday morning, offset off the hour so it does not land in the crowd of
+    # jobs everyone schedules at :00.
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: false
+
+jobs:
+  claims:
+    name: Every published claim still holds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.10.10"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - run: uv python install 3.12
+      - run: uv sync --locked
+
+      - name: Verify against GitHub and the published documentation
+        # Exit 2 means a claim is no longer true: a repository went private, a
+        # release was deleted, a pipeline is red, or a documentation site is
+        # 404ing. Exit 3 means nothing could be checked -- a rate limit is not
+        # evidence that anything is wrong, and the two must not look alike.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run portfolio verify --live
+
+      - name: The live test layer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run pytest -m live -v --no-cov

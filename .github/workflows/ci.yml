@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.10.10"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  quality:
+    name: Lint, format, types
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked --group dev
+
+      - name: ruff check
+        run: uv run ruff check --output-format=github .
+
+      - name: ruff format
+        run: uv run ruff format --check .
+
+      - name: mypy --strict
+        run: uv run mypy
+
+  index:
+    name: The index matches its data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked
+
+      - name: README.md is exactly what projects.toml renders to
+        # The failure this repository exists to catch: somebody edits the
+        # generated file, and the page now carries a claim no checker knows
+        # about. Exits 2 on drift, which is distinct from 1 for a usage error.
+        run: uv run portfolio render --check
+
+      - name: The offline claims hold
+        run: uv run portfolio verify
+
+  test:
+    name: Tests (${{ matrix.layer }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every marker except `live`, which needs the network and runs on a
+        # schedule. A layer that exists and is never selected is a layer nobody
+        # runs.
+        layer: [unit, integration, e2e, meta]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked --group dev
+
+      - name: pytest -m ${{ matrix.layer }}
+        # Bare, with no coverage flag: a matrix leg that inherited the coverage
+        # gate would fail on every leg but the full one, for a reason that has
+        # nothing to do with the layer it reports on.
+        run: uv run pytest -m ${{ matrix.layer }} -v
+
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+      - run: uv sync --locked --group dev
+
+      - name: Full suite with the coverage gate
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=98
+
+  build:
+    name: Distribution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Build the wheel and sdist
+        run: uv build
+
+      - name: The wheel installs and its console script works
+        # Building is not the same as being installable. This catches a missing
+        # package directory or a broken entry point, which a source checkout
+        # never notices because the source directory is importable anyway.
+        run: |
+          uv venv /tmp/verify
+          VIRTUAL_ENV=/tmp/verify uv pip install dist/*.whl
+          /tmp/verify/bin/portfolio --version
