@@ -233,3 +233,43 @@ An index is a page full of claims that decay: a repository goes private, a relea
 ## License
 
 MIT. Each project is separately licensed in its own repository.
+
+<!-- project-structure -->
+## Project structure
+
+```text
+├── .github/
+├── docs/
+│   ├── order.md
+│   └── verification.md
+├── security/
+│   ├── audit-exceptions.md
+│   └── audit-ignores.txt
+├── src/
+│   └── portfolio/
+├── tests/
+│   ├── e2e/
+│   ├── integration/
+│   ├── live/
+│   ├── meta/
+│   └── unit/
+├── .gitattributes
+├── .gitignore
+├── .gitleaks.toml
+├── CHANGELOG.md
+├── CODE_OF_CONDUCT.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── README.md
+├── SECURITY.md
+├── projects.toml
+├── pyproject.toml
+├── tasks.py
+├── tasks_local.py
+└── uv.lock
+```
+
+<!-- architecture -->
+## Architecture
+
+![Architecture diagram](docs/architecture.svg)
